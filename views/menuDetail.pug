@@ -2,7 +2,9 @@ extends layout
 
 block content
   div(class="container")
-    h1= menu.title
+    div(class="row")
+      div(class="col")
+        h1(class="display-4")= menu.title
     ul(class="nav nav-tabs" id="myTab" role="tablist")
       each card, index in cards
         if index === 0
@@ -12,8 +14,8 @@ block content
           li(class="nav-item")
             a(class="nav-link", data-toggle="tab", href=`#${card._id}`, role="tab", aria-controls=card._id, aria-selected="false") #{card.title}
 
-      li(class="nav-item")
-        a(class="btn btn-primary border-primary mt-1 p-1 pl-2 pr-2", href=`/menu/${menu._id}/card/create`) 
+      li(class="nav-item d-flex")
+        a(class="btn btn-primary border-primary align-self-center", style="font-size: .75rem;", href=`/menu/${menu._id}/card/create`) 
           i(class="fa fa-plus-square mr-1") 
           | Create Card
 
