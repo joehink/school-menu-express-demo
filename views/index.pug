@@ -1,0 +1,27 @@
+extends layout
+
+block content
+  div(class="container")
+    div(class="jumbotron mt-4")
+      div(class="row justify-content-center")
+          h2(class="display-4 pb-4") Create New Menu
+      div(class="row justify-content-center")    
+        div(class="col-3")      
+          form(action=`/dashboard/${dashboard}/menu/create`, method="post", class="text-center")
+            div(class="form-group")
+              input(type="text", name="menuTitle", placeholder="Menu Title", class="form-control")
+            div(class="form-group")
+              input(type="text", name="healtheUrl", placeholder="Healt-e Living URL", class="form-control")
+            input(type="submit", value="Create Menu", class="btn btn-primary")
+    div(class="row")
+      div(class="col")
+        h2(class="h2 mb-4 pb-2 border-bottom") Your Menus
+    div(class="row")
+      if menus
+        each menu in menus
+          div(class="col-3 mb-4")
+            div(class="card text-center")
+              div(class="card-body")
+                h4= menu.title
+                a(href=`/menu/${menu._id}`, class="btn btn-primary") Menu Details
+      

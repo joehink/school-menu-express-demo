@@ -1,0 +1,13 @@
+extends layout
+
+block content
+  div(class="container")
+    h1 Create Card
+    form(action=`/menu/${menuId}/card/create`, method="post")
+      each lunch in lunches
+        label(for=lunch._id) #{lunch.title}
+        input(type="checkbox", id= lunch._id, name="selectedItem", value=lunch)
+      input(type="file", name="backgroundImage")
+      label(for="title") Title
+      input(type="text", id="title", name="cardTitle")
+      input(type="submit", value="Create")
