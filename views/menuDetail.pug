@@ -4,8 +4,8 @@ block content
   div(class="container")
     div(class="row")
       div(class="col")
-        h1(class="display-4")= menu.title
-    ul(class="nav nav-tabs" id="myTab" role="tablist")
+        h1(class="display-4 mt-4")= menu.title
+    ul(class="nav nav-tabs mt-3" id="myTab" role="tablist")
       each card, index in cards
         if index === 0
           li(class="nav-item")
@@ -14,16 +14,32 @@ block content
           li(class="nav-item")
             a(class="nav-link", data-toggle="tab", href=`#${card._id}`, role="tab", aria-controls=card._id, aria-selected="false") #{card.title}
 
-      li(class="nav-item d-flex")
-        a(class="btn btn-primary border-primary align-self-center", style="font-size: .75rem;", href=`/menu/${menu._id}/card/create`) 
+      li(class="nav-item d-flex pl-1 pr-1")
+        a(class="btn btn-primary border-primary m-auto", style="font-size: .75rem;", href=`/menu/${menu._id}/card/create`) 
           i(class="fa fa-plus-square mr-1") 
           | Create Card
 
-    div(class="tab-content" id="myTabContent")
+    div(class="tab-content mt-4" id="myTabContent")
       each card, index in cards
           if index === 0
             div(class="tab-pane fade show active", id=card._id, role="tabpanel", aria-labelledby=`${card._id}-tab`) 
               h2=card.title
+              h4(class="mt-4") Items  
+              div(class="pl-4 mt-3")
+                each item in card.items
+                  p= item.title
+              h4(class="mt-4") Background Image
+              h4(class="mt-4") Display URL
+              div(class="pl-4 mt-3")
+                input(type="text" value= host + card.displayURL)
           else
             div(class="tab-pane fade", id=card._id, role="tabpanel", aria-labelledby=`${card._id}-tab`) 
               h2=card.title
+              h4(class="mt-4") Items  
+              div(class="pl-4 mt-3")
+                each item in card.items
+                  p= item.title
+              h4(class="mt-4") Background Image
+              h4(class="mt-4") Display URL
+              div(class="pl-4 mt-3")
+                input(type="text" value= host + card.displayURL)  

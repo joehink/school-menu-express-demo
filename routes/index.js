@@ -54,13 +54,23 @@ router.post('/dashboard/:dashboardGUID/menu/create', function(req, res, next) {
   });
 });
 
-//GET menu with all cards for that menu
+//GET menu deatails
 router.get('/menu/:menuId', function(req, res, next) {
   Menu.findById(req.params.menuId)
   .populate('cards')
   .exec(function(err, menu) {
       if (err) {return next(err);}
-      res.render('menuDetail', {cards: menu.cards, menu: menu });
+      var items = [];
+      menu.cards.forEach((card) => {
+        card.items.forEach((item) => {
+          items.push(JSON.parse(item))
+        });
+        card.items = items;
+        items = [];
+      });
+
+      console.log(items);
+      res.render('menuDetail', {cards: menu.cards, menu: menu, host: req.headers.host});
   });
 })
 

@@ -2,12 +2,23 @@ extends layout
 
 block content
   div(class="container")
-    h1 Create Card
+    h1(class="display-4 mt-4") Create Card
     form(action=`/menu/${menuId}/card/create`, method="post")
-      each lunch in lunches
-        label(for=lunch._id) #{lunch.title}
-        input(type="checkbox", id= lunch._id, name="selectedItem", value=lunch)
-      input(type="file", name="backgroundImage")
-      label(for="title") Title
-      input(type="text", id="title", name="cardTitle")
-      input(type="submit", value="Create")
+      div(class="row")
+        div(class="col")
+          h4(class="mt-4 mb-3 d-block") Items 
+      div(class="row") 
+        each lunch in lunches
+          input(type="checkbox", class="col-1 form-contorl", id= lunch._id, name="selectedItem", value=lunch)
+          label(for=lunch._id, class="col-sm-11 col-md-5 col-lg-3 col-form-label") #{lunch.title}
+      div(class="row")
+        div(class="col")
+          h4(class="mt-4 mb-3") Background Image
+          input(type="file", name="backgroundImage")
+      div(class="row")
+        div(class="col")
+          h4(class="mt-4 mb-3") Title
+          input(type="text", id="title", name="cardTitle")
+      div(class="row mt-4")
+        div(class="col text-center")
+          input(type="submit", class="btn btn-primary", value="Create")
