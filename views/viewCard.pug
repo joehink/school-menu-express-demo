@@ -1,0 +1,11 @@
+extends layout
+
+block content
+  div(class="display-card w-100" style=`background: url("data:${contentType};base64, ${bgImage}") center/cover no-repeat; height: 100vh;`)
+    div(class="row h-100 m-0 w-100")
+      div(class="col-sm-12 col-md-8 d-flex justify-content-center")
+          h1(class="display-1 align-self-center") #{card.title}
+      div(class="col-sm-12 col-md-4 d-flex justify-content-center items-column")
+          ul(class="align-self-center w-100 item-list")
+            each item in card.items
+              li(class="lunch-item mt-3 mb-3") #{item.title}

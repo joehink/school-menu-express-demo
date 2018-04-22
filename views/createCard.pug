@@ -3,7 +3,7 @@ extends layout
 block content
   div(class="container")
     h1(class="display-4 mt-4") Create Card
-    form(action=`/menu/${menuId}/card/create`, method="post")
+    form(action=`/menu/${menuId}/card/create`, enctype="multipart/form-data", accept=".jpg, .jpeg, .png", method="post")
       div(class="row")
         div(class="col")
           h4(class="mt-4 mb-3 d-block") Items 

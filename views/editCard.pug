@@ -1,0 +1,32 @@
+extends layout
+
+block content
+  div(class="container")
+    h1(class="display-4 mt-4") Edit Card
+    form(action=`/card/${card._id}/edit`, enctype="multipart/form-data", method="post")
+      div(class="row")
+        div(class="col")
+          h4(class="mt-4 mb-3 d-block") Items 
+      div(class="row") 
+        each lunch in lunches
+          if lunch._id == card.items[0]._id || lunch._id == card.items[1]._id || lunch._id == card.items[2]._id
+            input(type="checkbox", class="col-1 form-contorl", id= lunch._id, name="selectedItem", value=lunch, checked)
+            label(for=lunch._id, class="col-sm-11 col-md-5 col-lg-3 col-form-label") #{lunch.title}
+          else
+            input(type="checkbox", class="col-1 form-contorl", id= lunch._id, name="selectedItem", value=lunch)
+            label(for=lunch._id, class="col-sm-11 col-md-5 col-lg-3 col-form-label") #{lunch.title}
+      div(class="row mt-4 flex-column")
+        div(class="col-3")
+          h4(class="mb-3") Background Image
+          input(type="file", accept=".jpg, .jpeg, .png", name="backgroundImage")
+        div(class="col-3")
+          figure(class="figure mt-3")
+            img(src=`data:${contentType};base64, ${bgImage}`, alt="", class="w-100 img-thumbnail")
+            figcaption(class="figure-caption text-center") Current Background Image
+      div(class="row")
+        div(class="col")
+          h4(class="mt-4 mb-3") Title
+          input(type="text", id="title", name="cardTitle", value=card.title)
+      div(class="row mt-4")
+        div(class="col text-center")
+          input(type="submit", class="btn btn-primary", value="Edit")

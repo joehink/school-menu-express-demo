@@ -5,7 +5,8 @@ var cardSchema = new Schema({
     menu: { type: mongoose.Schema.Types.ObjectId, ref: 'Menu'},
     title: String,
     backgroundImage: String,
-    items: []
+    items: [],
+    imageContentType: String
 });
 
 //Display URL virtual

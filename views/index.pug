@@ -23,5 +23,7 @@ block content
             div(class="card text-center")
               div(class="card-body")
                 h4= menu.title
-                a(href=`/menu/${menu._id}`, class="btn btn-primary") Menu Details
+                div(class="row")
+                a(href=`/menu/${menu._id}`, class="btn btn-primary mr-1") Menu Details
+                a(href=`/menu/${menu._id}/delete`, class="btn btn-danger ml-1") Delete
       
