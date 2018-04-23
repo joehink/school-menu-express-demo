@@ -56,7 +56,7 @@ router.post('/dashboard/:dashboardGUID/menu/create', async function(req, res, ne
     await dashboard.save();
 
     //RENDER DASHBOARD
-    await res.redirect(`/dashboard/${req.params.dashboardGUID}`);
+    res.redirect(`/dashboard/${req.params.dashboardGUID}`);
 
   } catch(err) {
     console.error(err);
