@@ -51,8 +51,8 @@ router.post('/dashboard/:dashboardGUID/menu/create', async function(req, res, ne
     });
 
     //ADD MENU TO DASHBOARD OBJECT IN DATABASE
-    var dashboard = Dashboard.findOne({dashboardGUID: req.params.dashboardGUID});
-    await dashboard.menus.push(menu._id);
+    var dashboard = await Dashboard.findOne({dashboardGUID: req.params.dashboardGUID});
+    dashboard.menus.push(menu._id);
     await dashboard.save();
 
     //RENDER DASHBOARD
