@@ -22,7 +22,7 @@ router.get('/dashboard/:dashboardGUID', async function(req, res, next) {
     var dashboard = await Dashboard.findOne({dashboardGUID: req.params.dashboardGUID});
 
     if (!dashboard) {
-      //CREATE A NEW DASHBOARD
+      //CREATE A NEW DASHBOARD IF NONE MATCH GUID
       Dashboard.create({dashboardGUID: req.params.dashboardGUID}, function(err, dashboard) {
         if (err) throw err;
         res.redirect(`/dashboard/${dashboard.dashboardGUID}`);
@@ -74,14 +74,35 @@ router.get('/menu/:menuId', function(req, res, next) {
 })
 
 //DELETE menu
-router.get('/menu/:menuId/delete', function(req, res, next) {
-  Card.remove({menu: req.params.menuId}, function(err) {
-    if (err) throw err;
-    Menu.findByIdAndRemove(req.params.menuId, function(err, menu) {
-      res.redirect(`/dashboard/${menu.dashboardGUID}`);
+router.get('/menu/:menuId/delete', async function(req, res, next) {
+  try {
+    //DELETE MENU BY ID
+    var menu = await Menu.findByIdAndRemove(req.params.menuId);
+
+    //LOOP THROUGH EACH CARD ID IN DELETED MENU OBJECT
+    await menu.cards.forEach(async (cardId) => {
+
+      //REMOVE CARD BY ID
+      await Card.findByIdAndRemove(cardId);
+
+      //DELETE PHOTOS ASSOCIATED WITH EACH CARD 
+      var s3 = new AWS.S3();
+      var params = {
+        Bucket: "school-menu-bucket", 
+        Key: cardId.toString()
+      };
+      s3.deleteObject(params, function(err, data) {
+        if (err) console.log(err, err.stack);
+      });
     })
-  });
-})
+
+    //REDIRECT TO DASHBOARD
+    res.redirect(`/dashboard/${menu.dashboardGUID}`);
+
+  } catch(err) {
+    console.error(err)
+  }
+});  
 
 //GET create card form
 router.get('/menu/:menuId/card/create', function(req, res, next) {
@@ -96,125 +117,129 @@ router.get('/menu/:menuId/card/create', function(req, res, next) {
 });
 
 //CREATE new card
-router.post('/menu/:menuId/card/create', async function(req, res, next) {
+router.post('/menu/:menuId/card/create', function(req, res, next) {
   var form = new multiparty.Form();
-  async.waterfall([
-    function(callback) {
-      //PARSE MULTIPART FORM WITH MULTIPARTY PACKAGE
-      form.parse(req, function(err, fields, files) {
-        //PARSE EACH ITEM FROM FORM INTO OBJECT 
-        var items = [];
-        fields.selectedItem.forEach((item) => {
-          items.push(JSON.parse(item))
-        });
-        if (err) {
-          throw err;
-        } else {
-          callback(null, fields, files, items);
-        }
-      });
-    },
-    function(fields, files, items, callback) {
-      //CREATE A NEW CARD IN THE DATABASE
-      Card.create({
-        menu: req.params.menuId,
-        title: fields.cardTitle,
-        items: items,
-        backgroundImage: files.backgroundImage[0].originalFilename,
-        imageContentType: files.backgroundImage[0].headers['content-type']
-      }, function(err, card) {
-        if (err) {
-          throw err;
-        } else {
-          callback(null, files, card);
-        }
-      });
-    },
-    function(files, card, callback) {
-      //ADD NEW CARD TO MENU OBJECT IN DATABASE
-      Menu.findById(req.params.menuId, function(err, menu) {
-        menu.cards.push(card._id);
-        menu.save(function(err, newMenu) {
-          if (err) {
-            throw err;
-          } else {
-            callback(null, files, card);
-          }
-        });
-      });
-    },
-    function(files, card, callback) {
-      //UPLOAD BACKGROUND IMAGE TO S3 BUCKET
-      var s3 = new AWS.S3();
-      var params = {
-        Bucket: 'school-menu-bucket',
-        Key: card._id.toString(),
-        Body: fs.createReadStream(files.backgroundImage[0].path)
-      };
-      s3.upload(params, function(err, data) {
-        if (err) {
-          throw err;
-        } else {
-          fs.unlink(files.backgroundImage[0].path);
-          callback(null);
-        }
-      });
-    }
-  ], function(err) {
+
+  //PARSE MULTIPART FORM WITH MULTIPARTY PACKAGE
+  form.parse(req, async function(err, fields, files) {
+    //PARSE EACH ITEM FROM FORM INTO OBJECT 
+    var items = [];
+    await fields.selectedItem.forEach((item) => {
+      items.push(JSON.parse(item))
+    });
+
+    //CREATE A NEW CARD IN THE DATABASE
+    var card = await Card.create({
+      menu: req.params.menuId,
+      title: fields.cardTitle,
+      items: items,
+      backgroundImage: files.backgroundImage[0].originalFilename,
+      imageContentType: files.backgroundImage[0].headers['content-type']
+    });
+
+    //ADD NEW CARD TO MENU OBJECT IN DATABASE
+    var menu = await Menu.findById(req.params.menuId);
+    menu.cards.push(card._id);
+    menu.save();
+
+    //UPLOAD BACKGROUND IMAGE TO S3 BUCKET
+    var s3 = new AWS.S3();
+    var params = {
+      Bucket: 'school-menu-bucket',
+      Key: card._id.toString(),
+      Body: fs.createReadStream(files.backgroundImage[0].path)
+    };
+    s3.upload(params, async function(err, data) {
+      await fs.unlink(files.backgroundImage[0].path);
       res.redirect(`/menu/${req.params.menuId}`);
-  });
+    })
+  });    
 });
 
 //GET card
 router.get('/card/:cardId', async function(req, res, next) {
-  //FIND CARD BY ID
-  var card = await Card.findById(req.params.cardId);
+  try {
+    //FIND CARD BY ID
+    var card = await Card.findById(req.params.cardId);
 
-  //GET IMAGE FROM S3 BUCKET
-  var s3 = new AWS.S3();
-  var params = {
-    Bucket: "school-menu-bucket", 
-    Key: card._id.toString()
-  };
-  s3.getObject(params, function(err, data) {
-    if (err) console.log(err, err.stack); // an error occurred
-    else {
-    var imageFromS3 = (new Buffer(data.Body)).toString('base64');
-    res.render('viewCard', {bgImage: imageFromS3, card: card, contentType: card.imageContentType});
-    }
-  });
+    //GET IMAGE FROM S3 BUCKET
+    var s3 = new AWS.S3();
+    var params = {
+      Bucket: "school-menu-bucket", 
+      Key: card._id.toString()
+    };
+    s3.getObject(params, function(err, data) {
+      if (err) console.log(err, err.stack);
+      else {
+      var imageFromS3 = (new Buffer(data.Body)).toString('base64');
+      res.render('viewCard', {bgImage: imageFromS3, card: card, contentType: card.imageContentType});
+      }
+    });
+  } catch(err) {
+    console.error(err);
+  }
 });
 
 //DELETE card
-router.get('/card/:cardId/delete', function(req, res, next) {
-  Card.findByIdAndRemove(req.params.cardId, function(err, card) {
-    res.redirect(`/menu/${card.menu}`);
-  });
+router.get('/card/:cardId/delete', async function(req, res, next) {
+  try {
+    //FIND CARD BY ID AND REMOVE
+    var card = await Card.findByIdAndRemove(req.params.cardId);
+
+    //DELETE IMAGE ASSOSCIATED WITH CARD FROM S3
+    var s3 = new AWS.S3();
+    var params = {
+      Bucket: "school-menu-bucket", 
+      Key: card._id.toString()
+    };
+    s3.deleteObject(params, function(err, data) {
+      if (err) console.log(err, err.stack);
+      else     res.redirect(`/menu/${card.menu}`);
+    });
+  } catch(err) {
+    console.error(err);
+  }
 });
 
 //GET edit form
   router.get('/card/:cardId/edit', function(req, res, next) {
     async.parallel({
       lunches: function(callback) {
+        //FIND ALL LUNCHES
         SampleLunch.find({}).exec(callback);
       },
       card: function(callback) {
+        //FIND CARD BY ID
         Card.findById(req.params.cardId).exec(callback);
       },
-  }, function(err, results) {
+    },async function(err, results) {
       if (err) { return next(err); }
+      //GET BACKGROUND IMAGE FROM S3
       var s3 = new AWS.S3();
       var params = {
         Bucket: "school-menu-bucket", 
         Key: results.card._id.toString()
-       };
-       s3.getObject(params, function(err, data) {
-         if (err) console.log(err, err.stack); // an error occurred
-         else {
+      };
+
+      //CHECK TO SEE WHICH ITEMS HAVE BEEN SELECTED
+      for (var l = 0; l < results.lunches.length; l++) {
+        for (var i = 0; i < results.card.items.length; i++) {
+          if (results.lunches[l]._id.toString()==results.card.items[i]._id.toString()) {
+              results.lunches[l].checked='true';
+          }
+        }
+      }
+
+      await s3.getObject(params, function(err, data) {
+        if (err) console.log(err, err.stack);
+        else {
+          //CONVERT BACKGROUND IMAGE TO BASE64
           var imageFromS3 = (new Buffer(data.Body)).toString('base64');
+
+          //RENDER EDIT FORM
           res.render('editCard', {bgImage: imageFromS3, card: results.card, contentType: results.card.imageContentType, lunches: results.lunches});
-         }
-       });
+        }
+      });
     });
   });
 
@@ -223,7 +248,9 @@ router.get('/card/:cardId/delete', function(req, res, next) {
     var form = new multiparty.Form();
     var items = [];
 
+    //PARSE MULTIPART FORM
     form.parse(req, async function(err, fields, files) {
+      //CONVERT STRING VALUES FROM CHECK BOXES TO OBJECTS
       await fields.selectedItem.forEach((item) => {
         items.push(JSON.parse(item))
       });
@@ -231,14 +258,17 @@ router.get('/card/:cardId/delete', function(req, res, next) {
         title: fields.cardTitle,
         items: items
       };
+      //IF A BACKGROUND IMAGE WAS UPLOADED ADD IT TO FIELDSTOUPDATE
       if (files.backgroundImage[0].size != 0) {
         fieldsToUpdate.backgroundImage = files.backgroundImage[0].originalFilename;
         fieldsToUpdate.imageContentType = files.backgroundImage[0].headers['content-type'];
       }
+      //FIND CARD BY ID AND UPDATE
       await Card.findByIdAndUpdate(req.params.cardId, fieldsToUpdate, function(err, card) {
         items = [];
         if (err) throw err;
         if (files.backgroundImage[0].size != 0) {
+          //UPLOAD NEW BACKGROUND IMAGE IF THERE IS ONE
           var s3 = new AWS.S3();
           var params = {
             Bucket: 'school-menu-bucket',
@@ -249,6 +279,7 @@ router.get('/card/:cardId/delete', function(req, res, next) {
             res.redirect(`/menu/${card.menu}`);
           })
         } else {
+          //REDIRECT TO MENU
           res.redirect(`/menu/${card.menu}`);
         }
       });
