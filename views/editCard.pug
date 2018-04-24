@@ -10,16 +10,18 @@ block content
       div(class="row") 
         each lunch in lunches
           if lunch.checked == 'true'
-            input(type="checkbox", class="col-1 form-contorl", id= lunch._id, name="selectedItem", value=lunch, checked)
-            label(for=lunch._id, class="col-sm-11 col-md-5 col-lg-3 col-form-label") #{lunch.title}
+            div(class="form-check col-sm-12 col-md-6 col-lg-4 align-items-center d-flex")
+              input(type="checkbox", class="form-contorl", id= lunch._id, name="selectedItem", value=lunch, checked)
+              label(for=lunch._id, class="col-form-label ml-2") #{lunch.title}
           else
-            input(type="checkbox", class="col-1 form-contorl", id= lunch._id, name="selectedItem", value=lunch)
-            label(for=lunch._id, class="col-sm-11 col-md-5 col-lg-3 col-form-label") #{lunch.title}
+            div(class="form-check col-sm-12 col-md-6 col-lg-4 align-items-center d-flex")
+              input(type="checkbox", class="form-contorl", id= lunch._id, name="selectedItem", value=lunch)
+              label(for=lunch._id, class="col-form-label ml-2") #{lunch.title}
       div(class="row mt-4 flex-column")
-        div(class="col-3")
+        div(class="col-12")
           h4(class="mb-3") Background Image
           input(type="file", accept=".jpg, .jpeg, .png", name="backgroundImage")
-        div(class="col-3")
+        div(class="col-sm-12 col-md-8 col-lg-3")
           figure(class="figure mt-3")
             img(src=`data:${contentType};base64, ${bgImage}`, alt="", class="w-100 img-thumbnail")
             figcaption(class="figure-caption text-center") Current Background Image
