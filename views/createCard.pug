@@ -1,6 +1,9 @@
 extends layout
 
 block content
+  nav(class="navbar navbar-light bg-secondary")
+    div(class="container")
+      a(class="btn btn-light btn-sm", style="font-size: .75rem;" href=`/menu/${menuId}`) Back to Menu
   div(class="container")
     h1(class="display-4 mt-4") Create Card
     form(action=`/menu/${menuId}/card/create`, enctype="multipart/form-data", accept=".jpg, .jpeg, .png", method="post")
@@ -15,11 +18,11 @@ block content
       div(class="row")
         div(class="col")
           h4(class="mt-4 mb-3") Background Image
-          input(type="file", name="backgroundImage")
+          input(type="file", name="backgroundImage", required)
       div(class="row")
         div(class="col")
           h4(class="mt-4 mb-3") Title
-          input(type="text", id="title", name="cardTitle")
+          input(type="text", id="title", name="cardTitle", required)
       div(class="row mt-4")
         div(class="col text-center")
-          input(type="submit", class="btn btn-primary", value="Create")
+          input(type="submit", class="btn btn-primary mb-5", value="Create")

@@ -1,17 +1,18 @@
 extends layout
 
 block content
+  nav(class="navbar navbar-light bg-secondary")
   div(class="container")
     div(class="jumbotron mt-4")
       div(class="row justify-content-center")
-          h2(class="display-4 pb-4") Create New Menu
+          h2(class="display-4 pb-4 text-center") Create New Menu
       div(class="row justify-content-center")    
-        div(class="col-3")      
+        div(class="col-sm-12 col-lg-6 col-xl-3")      
           form(action=`/dashboard/${dashboard}/menu/create`, method="post", class="text-center")
             div(class="form-group")
-              input(type="text", name="menuTitle", placeholder="Menu Title", class="form-control")
+              input(type="text", name="menuTitle", placeholder="Menu Title", class="form-control", required)
             div(class="form-group")
-              input(type="text", name="healtheUrl", placeholder="Healt-e Living URL", class="form-control")
+              input(type="text", name="healtheUrl", placeholder="Health-e Living URL", class="form-control", required)
             input(type="submit", value="Create Menu", class="btn btn-primary")
     div(class="row")
       div(class="col")
@@ -19,11 +20,11 @@ block content
     div(class="row")
       if menus
         each menu in menus
-          div(class="col-3 mb-4")
+          div(class="col-lg-3 col-md-6 col-sm-12 mb-4")
             div(class="card text-center")
-              div(class="card-body")
+              div(class="card-body p-4")
                 h4= menu.title
-                div(class="row")
-                a(href=`/menu/${menu._id}`, class="btn btn-primary mr-1") Menu Details
-                a(href=`/menu/${menu._id}/delete`, class="btn btn-danger ml-1") Delete
+                div(class="row justify-content-center flex-column flex-xl-row")
+                  a(href=`/menu/${menu._id}`, class="btn btn-primary mr-xl-1 mb-1") Menu Details
+                  a(href=`/menu/${menu._id}/delete`, class="btn btn-danger ml-xl-1 mb-1") Delete
       

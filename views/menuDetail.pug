@@ -1,10 +1,13 @@
 extends layout
 
 block content
+  nav(class="navbar navbar-light bg-secondary")
+    div(class="container")
+      a(class="btn btn-light btn-sm", style="font-size: .75rem;" href=`/dashboard/${menu.dashboardGUID}`) Back to Dashboard
   div(class="container")
     div(class="row")
       div(class="col")
-        h1(class="display-4 mt-5")= menu.title
+        h1(class="display-4 mt-4")= menu.title
     ul(class="nav nav-tabs mt-3" id="myTab" role="tablist")
       each card, index in cards
         li(class="nav-item")

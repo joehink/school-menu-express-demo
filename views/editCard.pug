@@ -1,6 +1,9 @@
 extends layout
 
 block content
+  nav(class="navbar navbar-light bg-secondary")
+    div(class="container")
+      a(class="btn btn-light btn-sm", style="font-size: .75rem;" href=`/menu/${card.menu}`) Back to Menu
   div(class="container")
     h1(class="display-4 mt-4") Edit Card
     form(action=`/card/${card._id}/edit`, enctype="multipart/form-data", method="post")
@@ -31,4 +34,4 @@ block content
           input(type="text", id="title", name="cardTitle", value=card.title)
       div(class="row mt-4")
         div(class="col text-center")
-          input(type="submit", class="btn btn-primary", value="Edit")
+          input(type="submit", class="btn btn-primary mb-5", value="Edit")
