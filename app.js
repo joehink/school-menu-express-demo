@@ -24,9 +24,11 @@ app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(helmet({
-  frameguard: false
-}));
+app.use(helmet());
+app.use(function(req, res, next) {
+  res.removeHeader('X-Frame-Options')
+  next()
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', index);
