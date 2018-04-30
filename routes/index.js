@@ -174,7 +174,7 @@ router.post('/menu/:menuId/card/create', function(req, res, next) {
 });
 
 //GET card
-router.get('/card/:cardId',removeFrameguard, async function(req, res, next) {
+router.get('/card/:cardId', removeFrameguard, async function(req, res, next) {
   try {
     //FIND CARD BY ID
     var card = await Card.findById(req.params.cardId);
