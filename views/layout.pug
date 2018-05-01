@@ -2,6 +2,43 @@ doctype html
 html
   head
     title= title
+    style(type="text/css").
+      .display-card {
+        overflow: none;
+      }
+
+      .display-card h1, .items-column {
+        background-color: rgba(255, 255, 255, 0.7);
+      }
+
+      .display-card h1 {
+        text-align: center;
+        padding: 0em .5em;
+        font-size: 8em;
+      }
+
+      .lunch-item {
+        font-size: 2.75em;
+      }
+
+      .item-list {
+        list-style-type: none;
+      }
+
+      @media (max-width: 768px) {
+        .display-card h1 {
+            font-size: 4em;
+        }
+        .lunch-item {
+          font-size: 1.5em;
+        }
+      }
+
+      @media (max-width: 992px) { 
+        .frameCol {
+          height: 50vh;
+        }
+      }
     link(rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4" crossorigin="anonymous")
     link(rel="stylesheet" href="/stylesheets/style.css")
   body
