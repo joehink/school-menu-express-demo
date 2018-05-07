@@ -1,8 +1,14 @@
-var mongoose = require('mongoose');
-
-var dashboardSchema = mongoose.Schema({
-    dashboardGUID: String,
-    menus: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Menu'}]
-});
-
-module.exports = mongoose.model('Dashboard', dashboardSchema);
+var connection = require('../sequelize.js');
+var Menu = connection.import(__dirname + "/Menu.js");
+module.exports = (sequelize, DataTypes) => {
+    var Dashboard = sequelize.define('dashboards', {
+        guid: {
+            type: DataTypes.STRING
+        }
+    });
+    Dashboard.hasMany(Menu, {
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+    });
+    return Dashboard;
+  }
