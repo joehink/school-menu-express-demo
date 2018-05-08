@@ -25,6 +25,22 @@ html
         list-style-type: none;
       }
 
+      .page {
+        display: none;
+      }
+
+      .day {
+        background-color: lightgray;
+        padding: 1em;
+      }
+
+      #easyPaginate {width:300px;}
+      #easyPaginate .day {display:block;margin-bottom:10px;}
+      #easyPaginate p {text-align:center;}
+      .easyPaginateNav a {padding:5px;}
+      .easyPaginateNav {text-align: center;}
+      .easyPaginateNav a.current {font-weight:bold;text-decoration:underline;}
+
       @media (max-width: 768px) {
         .display-card h1 {
             font-size: 3em;
@@ -47,3 +63,5 @@ html
       script(src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js" integrity="sha384-cs/chFZiN24E4KMATLdqdvsezGxaGsi4hLGOzlXwp5UZB1LY//20VyM2taTB4QvJ" crossorigin="anonymous")
       script(src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js" integrity="sha384-uefMccjFJAIv6A+rW+L4AHf99KvxDjWSu1z9VI8SKNVmz4sk7buKt/6v9KI65qnm" crossorigin="anonymous")
       script(src="https://use.fontawesome.com/32fd138e9e.js")
+      script(src="/scripts/jquery.easyPaginate.js")
+      script(src="/scripts/script.js")

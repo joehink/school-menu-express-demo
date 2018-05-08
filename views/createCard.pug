@@ -10,16 +10,18 @@ block content
       div(class="row")
         div(class="col")
           h4(class="mt-4 mb-3 d-block") Items 
-      div(class="row") 
-        each date, index in mealDates
-          div(class="col-4")
-            p=index
-            each meal in date
-              if meal.length !== 0
-                each item in meal
-                  div(class="form-check")
-                    input(type="checkbox", class="form-contorl", id= item.nid, name="selectedItem", value=item.title)
-                    label(for=item.nid, class="col-form-label ml-2") #{item.title}
+      div(class='row flex-column-reverse align-items-center')
+        div(id="easyPaginate")
+          each date, index in mealDates
+            div(class="day")
+              p=index
+              each meal, index in date
+                if meal.length !== 0
+                  p=index
+                  each item in meal
+                      div(class="form-check")
+                        input(type="checkbox", class="form-contorl", id=item.nid, name="selectedItem", value=item.title)
+                        label(for=item.nid, class="col-form-label ml-2") #{item.title}
       div(class="row")
         div(class="col")
           h4(class="mt-4 mb-3") Background Image
@@ -31,4 +33,17 @@ block content
       div(class="row mt-4")
         div(class="col text-center")
           input(type="submit", class="btn btn-primary mb-5", value="Create")
-//- col-sm-12 col-md-6 col-lg-4 align-items-center d-flex
+
+//-           <nav aria-label="Page navigation example">
+//-   <ul class="pagination justify-content-center">
+//-     <li class="page-item disabled">
+//-       <a class="page-link" href="#" tabindex="-1">Previous</a>
+//-     </li>
+//-     <li class="page-item"><a class="page-link" href="#">1</a></li>
+//-     <li class="page-item"><a class="page-link" href="#">2</a></li>
+//-     <li class="page-item"><a class="page-link" href="#">3</a></li>
+//-     <li class="page-item">
+//-       <a class="page-link" href="#">Next</a>
+//-     </li>
+//-   </ul>
+//- </nav>

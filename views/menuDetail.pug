@@ -20,7 +20,6 @@ block content
 
     div(class="tab-content mt-4" id="myTabContent")
       each card, index in cards
-        - var showActive = "show active";
         div(class=`tab-pane fade ${index === 0 ? "show active": null}`, id=card.id, role="tabpanel", aria-labelledby=`${card.id}-tab`) 
           div(class="row")
             div(class="col-md-12 col-lg-4")

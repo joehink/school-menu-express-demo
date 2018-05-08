@@ -107,22 +107,22 @@ router.get('/menu/:menuId/delete', function (req, res, next) {
 //GET create card form
 router.get('/menu/:menuId/card/create', function (req, res, next) {
   Menu.findById(req.params.menuId).then((menu) => {
-    res.redirect(url.parse(menu.url).path);
+    res.redirect(`/menu/${req.params.menuId}${url.parse(menu.url).path}`);
   })
 });
 
-router.get('/instance/:instanceId/district/:districtFile', function(req, res, next) {
+router.get('/menu/:menuId/instance/:instanceId/district/:districtFile', function(req, res, next) {
   var queryParameters = url.parse(req.originalUrl).query;
-  var menuId = queryParameters.split("menu_id=").slice(1).join('');
+  var fetchedMenuId = queryParameters.split("menu_id=").slice(1).join('');
   var schoolId = queryParameters.split("&")[0].split("school_id=").slice(1).join('');
   var districtId = req.params.districtFile.split('.').slice(0, 1).join('');
   
-  fetch(`http://inapi.stage.hmpdev.net/healtheliving/calendar/${req.params.instanceId}/${menuId}/${districtId}/${schoolId}`)
+  fetch(`http://inapi.stage.hmpdev.net/healtheliving/calendar/${req.params.instanceId}/${fetchedMenuId}/${districtId}/${schoolId}`)
   .then(function(response) {
     return response.json();
   })
   .then(function(myJson) {
-    res.render('createCard', { mealDates: JSON.parse(myJson.recipes) });
+    res.render('createCard', { mealDates: JSON.parse(myJson.recipes), menuId: req.params.menuId });
   });
 })
 

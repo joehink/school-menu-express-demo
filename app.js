@@ -4,15 +4,12 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-var mongoose = require('mongoose');
 var helmet = require('helmet');
 
 var index = require('./routes/index');
 var users = require('./routes/users');
 
 var app = express();
-mongoose.connect('mongodb://root:1234@ds231739.mlab.com:31739/school-menu-demo');
-
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
