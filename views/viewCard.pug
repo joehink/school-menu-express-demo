@@ -3,9 +3,14 @@ extends layout
 block content
   div(class="display-card w-100" style=`background: url("data:${contentType};base64, ${bgImage}") center/cover no-repeat; height: 100vh;`)
     div(class="row h-100 m-0 w-100")
-      div(class="col-7 d-flex justify-content-center")
-          h1(class="display-4 align-self-center") #{card.title}
+      div(class="col-7 align-self-center")
+        div(class="row justify-content-center")
+          h1(class="display-4 align-self-center mb-3") #{card.title}
+        if card.customText
+          div(class="row justify-content-center ")
+            div(class="col")
+              p(class="align-self-end p-2")= card.customText
       div(class="col-5 d-flex justify-content-center items-column")
-          ul(class="align-self-center w-100 item-list")
-            each item in card.items
-              li(class="lunch-item mt-2 mb-2") #{JSON.parse(item.data).title}
+        ul(class="align-self-center w-100 item-list")
+          each item in displayDay.items
+            li(class="lunch-item mt-2 mb-2") #{item.title}

@@ -24,10 +24,23 @@ block content
           div(class="row")
             div(class="col-md-12 col-lg-4")
               h2=card.title
-              h4(class="mt-4") Items  
-              div(class="pl-4 mt-3")
-                each item in card.items
-                  p= JSON.parse(item.data).title
+              h4(class="mt-4") Items 
+              div(id=`${card.id}CardCarousel` class="carousel slide w-75 m-auto" data-ride="carousel" data-interval="false")
+                div(class="carousel-inner d-flex align-items-center" role="listbox")
+                 -var count = 0
+                  each day in card.days
+                    div(class=`text-center day carousel-item ${count == 0 ? "active" : ""}`)
+                      h6(class="pb-1 mb-3 border-bottom") #{day.date}
+                      div
+                        each item in day.items
+                          p(class="text-left")= item.title
+                          -count++
+                a(class="carousel-control-prev" href=`#${card.id}CardCarousel` role="button" data-slide="prev")
+                  span(class="carousel-control-prev-icon" aria-hidden="true")
+                  span(class="sr-only") Previous
+                a(class="carousel-control-next" href=`#${card.id}CardCarousel` role="button" data-slide="next")
+                  span(class="carousel-control-next-icon" aria-hidden="true")
+                  span(class="sr-only") Next
               h4(class="mt-4") Background Image
               p(class="mt-3 pl-4")= card.backgroundImage
               h4(class="mt-4") Display URL
@@ -36,7 +49,7 @@ block content
             div(class="col-md-12 col-lg-8 pr-5 mt-3 frameCol")
               iframe(class="w-100 h-100" src=`/card/${card.id}`, frameborder="0", style="box-shadow: 0 5px 20px rgba(0, 0, 0, 0.6);")
           div(class="row mt-5 justify-content-center")
-            a(href=`/card/${card.id}/edit`, class="btn btn-primary mr-1") Edit
+            a(href=`/menu/${menu.id}/card/${card.id}/edit`, class="btn btn-primary mr-1") Edit
             a(href=`/card/${card.id}/delete`, class="btn btn-danger mr-1 ml-1") Delete
             a(href=`/card/${card.id}`, class="btn btn-primary ml-1") View   
     if cards.length    

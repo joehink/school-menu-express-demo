@@ -29,6 +29,9 @@ var Card = connection.define('cards', {
   title: {
       type: Sequelize.STRING
   },
+  customText: {
+      type: Sequelize.TEXT
+  },
   backgroundImage: {
       type: Sequelize.STRING
   },
@@ -36,9 +39,17 @@ var Card = connection.define('cards', {
       type: Sequelize.STRING
   }
 });
+var Day = connection.define('days', {
+  date: {
+    type: Sequelize.DATE
+  }
+});
 var Item = connection.define('items', {
-  data: {
-      type: Sequelize.TEXT
+  title: {
+      type: Sequelize.STRING
+  },
+  nid: {
+    type: Sequelize.STRING
   }
 });
 
@@ -58,11 +69,19 @@ Card.belongsTo(Menu, {
   onDelete: 'CASCADE',
   onUpdate: 'CASCADE',
 });
-Card.hasMany(Item, {
+Card.hasMany(Day, {
   onDelete: 'CASCADE',
   onUpdate: 'CASCADE',
 });
-Item.belongsTo(Card, {
+Day.belongsTo(Card, {
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE',
+});
+Day.hasMany(Item, {
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE',
+});
+Item.belongsTo(Day, {
   onDelete: 'CASCADE',
   onUpdate: 'CASCADE',
 });
@@ -71,5 +90,6 @@ module.exports = {
     Dashboard,
     Menu,
     Card,
+    Day,
     Item
 }

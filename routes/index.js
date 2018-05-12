@@ -1,6 +1,5 @@
 var express = require('express');
 var router = express.Router();
-var async = require('async');
 var AWS = require('aws-sdk');
 var multiparty = require('multiparty');
 var fs = require('fs');
@@ -9,24 +8,29 @@ var createDOMPurify = require('dompurify');
 var { JSDOM } = require('jsdom');
 var window = (new JSDOM('')).window;
 var DOMPurify = createDOMPurify(window);
-var mysql = require('mysql');
 var fetch = require('node-fetch');
+var moment = require('moment');
 
-var SampleLunch = require('../models/SampleLunch');
+//"Sequelize" models for each table in database
+var {Dashboard, Menu, Card, Day, Item} = require('../db/sequelize.js');
 
-var {Dashboard, Menu, Card, Item} = require('../sequelize.js');
-
-/* GET home page. */
+//GET -- ROOT OF WEBSITE
 router.get('/', function (req, res, next) {
-  res.send('Put in your url');
+  res.render('index');
 });
 
-// GET dashboard // Create dashboard if does not exist
-router.get('/dashboard/:dashboardGUID', async function (req, res, next) {
+router.post('/', function (req, res, next) {
+  res.redirect(`/dashboard/${req.body.dashboardId}`);
+});
+
+//GET -- DASHBOARD 
+router.get('/dashboard/:dashboardGUID', function (req, res, next) {
+  //Return dashboard if there is one matching req.params.dashboardGUID, otherwise create new dashboard
   Dashboard.findOrCreate({ where: { guid: req.params.dashboardGUID }, defaults: { guid: req.params.dashboardGUID } })
     .spread((dashboard, created) => {
+      //Select all menus associated with dashboard
       Menu.findAll({ where: { dashboardId: dashboard.id } }).then((menus) => {
-        res.render('index', { dashboard: dashboard.guid, menus: menus });
+        res.render('dashboard', { dashboard: dashboard.guid, menus: menus });
       })
   }).catch(error => {
     if (error) {
@@ -36,15 +40,16 @@ router.get('/dashboard/:dashboardGUID', async function (req, res, next) {
   });
 });
 
-//CREATE menu 
+//POST -- CREATE NEW MENU
 router.post('/dashboard/:dashboardGUID/menu/create', function (req, res, next) {
   Dashboard.findOne({where: { guid: req.params.dashboardGUID }}).then((dashboard) => {
     Menu.create({
       title: DOMPurify.sanitize(req.body.menuTitle),
       url: DOMPurify.sanitize(req.body.healtheUrl),
-      dashboardId: DOMPurify.sanitize(dashboard.id),
+      dashboardId: DOMPurify.sanitize(dashboard.id), //Foreign key that links menus to dashboards
       dashboardGUID: DOMPurify.sanitize(req.params.dashboardGUID)
     }).then(() => {
+      //Redirect back to dashboard
       res.redirect(`/dashboard/${req.params.dashboardGUID}`);
     })
   }).catch(error => {
@@ -55,13 +60,27 @@ router.post('/dashboard/:dashboardGUID/menu/create', function (req, res, next) {
   })
 });
 
-//GET menu deatails
+//GET -- MENU DETAILS
 router.get('/menu/:menuId', function(req, res, next) {
   Menu.findOne({ where: {id: req.params.menuId}, include: [{
       model: Card, 
-      include: [
-        Item
-      ]}]}).then((menu) => {
+      include: [{
+        model: Day,
+        where: {
+          date: {
+            $gte: new Date(moment().add(1, 'd').format('YYYY-MM-DD'))
+            //Where day.date is greater than or equal to ($gte) today's date
+            //new Date() subtracts a day, so added one in with moment
+          }
+        },
+        include: [Item]
+      }]}], order: [
+        [ Card, Day, 'date', 'ASC' ]
+      ]}).then((menu) => {
+        /* menu contains:
+            -array of cards in menu
+              -array of items in each card
+        */ 
         if(menu) {
           res.render('menuDetail', {cards: menu.cards, menu: menu, host: req.headers.host})
         } else {
@@ -76,13 +95,14 @@ router.get('/menu/:menuId', function(req, res, next) {
 })
 
 
-//DELETE menu
+//DELETE -- MENU
 router.get('/menu/:menuId/delete', function (req, res, next) {
   Menu.findOne({ where: {id: req.params.menuId}, include: [ Card ] }).then((menu) => {
     if(menu) {
+      //Delete menu
       Menu.destroy({ where: { id: req.params.menuId } });
       menu.cards.forEach((card) => {
-        //DELETE PHOTOS ASSOCIATED WITH EACH CARD 
+        //Delete photos associated with each card from deleted menu
         var s3 = new AWS.S3();
         var params = {
           Bucket: "school-menu-bucket",
@@ -91,6 +111,7 @@ router.get('/menu/:menuId/delete', function (req, res, next) {
         s3.deleteObject(params, function (err, data) {
           if (err) console.log(err, err.stack);
         });
+        //end photo delete
       })
       res.redirect(`/dashboard/${menu.dashboardGUID}`);
     } else {
@@ -104,48 +125,81 @@ router.get('/menu/:menuId/delete', function (req, res, next) {
   })
 });
 
-//GET create card form
+//GET -- CREATE CARD FORM
 router.get('/menu/:menuId/card/create', function (req, res, next) {
   Menu.findById(req.params.menuId).then((menu) => {
+    //Redirect to new route so instanceId and districtId can be retrieved 
     res.redirect(`/menu/${req.params.menuId}${url.parse(menu.url).path}`);
   })
 });
-
+//GET -- CREATE CARD FORM (Continued from above)
 router.get('/menu/:menuId/instance/:instanceId/district/:districtFile', function(req, res, next) {
+  //Parse health-e living url
   var queryParameters = url.parse(req.originalUrl).query;
   var fetchedMenuId = queryParameters.split("menu_id=").slice(1).join('');
   var schoolId = queryParameters.split("&")[0].split("school_id=").slice(1).join('');
   var districtId = req.params.districtFile.split('.').slice(0, 1).join('');
   
+  //Fetch data from lunch menu
   fetch(`http://inapi.stage.hmpdev.net/healtheliving/calendar/${req.params.instanceId}/${fetchedMenuId}/${districtId}/${schoolId}`)
   .then(function(response) {
     return response.json();
   })
-  .then(function(myJson) {
-    res.render('createCard', { mealDates: JSON.parse(myJson.recipes), menuId: req.params.menuId });
+  .then(function(fetchedMenu) {
+    res.render('createCard', { mealDates: JSON.parse(fetchedMenu.recipes), menuId: req.params.menuId, currDate: moment().format('YYYY-MM-DD') });
   });
 })
 
-//CREATE new card
+//POST new card
 router.post('/menu/:menuId/card/create', function (req, res, next) {
+  var selectedItemObject = {};
+  /* selectedItemObject will organize selectedItem checkboxes by date
+    {
+      2018-05-11: [],
+      2018-05-12: [],
+      2018-05-13: [],
+    }
+  */
   var form = new multiparty.Form();
-  //PARSE MULTIPART FORM WITH MULTIPARTY PACKAGE
   form.parse(req, function (err, fields, files) {
     Card.create({
-      menuId: DOMPurify.sanitize(req.params.menuId),
+      menuId: DOMPurify.sanitize(req.params.menuId), //Foreign key that links cards to menu
       title: DOMPurify.sanitize(fields.cardTitle),
+      customText: DOMPurify.sanitize(fields.customText),
       backgroundImage: DOMPurify.sanitize(files.backgroundImage[0].originalFilename),
       imageContentType: DOMPurify.sanitize(files.backgroundImage[0].headers['content-type'])
     }).then((card) => {
-
+      //Create selectedItemObject keys
       fields.selectedItem.forEach((item) => {
-        Item.create({
-          data: item,
-          cardId: card.id
+        if (!selectedItemObject[JSON.parse(item).date]) {
+          selectedItemObject[JSON.parse(item).date] = [];
+        }
+      })
+      return card;
+    }).then((card) => {
+      //Loop through selectedItemObject keys which are strings of dates. Ex. '2018-05-12'
+      Object.keys(selectedItemObject).forEach((day) => {
+        //Create new day for each day in selectedItemObject
+        Day.create({
+          date: new Date(moment(day).add(1, 'd').format('YYYY-MM-DD')),
+          cardId: card.id //Foreign key that links days to card
+        }).then((newDay) => {
+          fields.selectedItem.forEach((item) => {
+            //Loop through every selectedItem checkbox
+            //if it has the same date as newDay create item and link it to newDay
+            if(JSON.parse(item).date == moment(newDay.date).format('YYYY-MM-DD')) {
+              Item.create({
+                title: JSON.parse(item).title,
+                nid: JSON.parse(item).nid,
+                dayId: newDay.id
+              })
+            }
+          })
         })
       })
-      
-      //UPLOAD BACKGROUND IMAGE TO S3 BUCKET
+      return card;
+    }).then((card) => {
+      //Upload backgroundImage to S3
       var s3 = new AWS.S3();
       var params = {
         Bucket: 'school-menu-bucket',
@@ -165,11 +219,23 @@ router.post('/menu/:menuId/card/create', function (req, res, next) {
   });
 });
 
-//GET card
+
+//GET -- CARD
 router.get('/card/:cardId', function (req, res, next) {
-  Card.findOne({ where: { id: req.params.cardId }, include: {model: Item} }).then((card) => {
+  Card.findOne({where: { id: req.params.cardId }, include: [{
+    model: Day, 
+    where: {date: {
+      $gte: new Date(moment().add(1, 'd').format('YYYY-MM-DD'))
+      //Where day.date is greater than or equal to ($gte) today's date
+      //new Date() subtracts a day, so added one in with moment
+    },
+  }, 
+    include: [ Item ]
+  }], order: [
+  [ Day, 'date', 'ASC' ]
+  ]}).then((card) => {
     if (card) {
-      //GET IMAGE FROM S3 BUCKET
+      //Get backgroundImage from S3
       var s3 = new AWS.S3();
       var params = {
         Bucket: "school-menu-bucket",
@@ -179,11 +245,11 @@ router.get('/card/:cardId', function (req, res, next) {
         if (err) console.log(err, err.stack);
         else {
           var imageFromS3 = (new Buffer(data.Body)).toString('base64');
-          res.render('viewCard', { bgImage: imageFromS3, card: card, contentType: card.imageContentType });
+          res.render('viewCard', { bgImage: imageFromS3, card: card, displayDay: card.days[0], contentType: card.imageContentType });
         }
       });
     } else {
-      res.render('notFound', { cardId: req.params.cardId } );
+        res.render('notFound', { cardId: req.params.cardId } );
     }
   }).catch(error => {
     if (error) {
@@ -198,7 +264,7 @@ router.get('/card/:cardId/delete', function (req, res, next) {
   Card.findById(req.params.cardId).then((card) => {
     if(card) {
       Card.destroy({ where: { id: req.params.cardId } });
-      //DELETE IMAGE ASSOSCIATED WITH CARD FROM S3
+      //Delete image associated with card from S3
       var s3 = new AWS.S3();
       var params = {
         Bucket: "school-menu-bucket",
@@ -219,20 +285,70 @@ router.get('/card/:cardId/delete', function (req, res, next) {
   })
 });
 
-//GET edit form
-router.get('/card/:cardId/edit',function (req, res, next) {
-  Card.findOne({ where: {id: req.params.cardId}, include: [ Item ]}).then((card) => {
-    if(card) {
-      SampleLunch.find({}).then((lunches) => {
-        //CHECK TO SEE WHICH ITEMS HAVE BEEN SELECTED
-        for (var l = 0; l < lunches.length; l++) {
-          for (var i = 0; i < card.items.length; i++) {
-            if (lunches[l]._id.toString() == JSON.parse(card.items[i].data)._id.toString()) {
-              lunches[l].checked = 'true';
-            }
+//GET -- EDIT CARD FORM
+router.get('/menu/:menuId/card/:cardId/edit',function (req, res, next) {
+  Menu.findById(req.params.menuId).then((menu) => {
+    //Redirect to new route so instanceId and districtId can be retrieved 
+    res.redirect(`/menu/${req.params.menuId}/card/${req.params.cardId}${url.parse(menu.url).path}`);
+  })
+});
+//GET -- EDIT CARD FORM (continued from above)
+router.get('/menu/:menuId/card/:cardId/instance/:instanceId/district/:districtFile', function(req, res, next) {
+  //Parse health-e living url
+  var queryParameters = url.parse(req.originalUrl).query;
+  var fetchedMenuId = queryParameters.split("menu_id=").slice(1).join('');
+  var schoolId = queryParameters.split("&")[0].split("school_id=").slice(1).join('');
+  var districtId = req.params.districtFile.split('.').slice(0, 1).join('');
+
+  Card.findOne({ where: {id: req.params.cardId}, include: [{ 
+    model: Day, 
+    where: {
+      date: {
+        $gte: new Date(moment().add(1, 'd').format('YYYY-MM-DD'))
+        //Where day.date is greater than or equal to ($gte) today's date
+        //new Date() subtracts a day, so added one in with moment
+      },
+    }, 
+    include: [ Item ]
+  }], order: [
+    [ Day, 'date', 'ASC' ]
+  ]}).then((card) => {
+    fetch(`http://inapi.stage.hmpdev.net/healtheliving/calendar/${req.params.instanceId}/${fetchedMenuId}/${districtId}/${schoolId}`)
+    .then(function(response) {
+      return response.json();
+    })
+    .then(function(fetchedMenu) {
+      var recipes =  JSON.parse(fetchedMenu.recipes);
+      /* recipes contains:
+          -days in menu calendar
+            -array of meals for each day
+              -array of items for each meal
+      */
+      
+      if(card) {
+        //Loop through each day, meal, and item to find which items have already been selected for each day
+        for(var date in recipes) {
+          for(var meal in recipes[date]) {
+            recipes[date][meal].forEach((mealItem) => {
+
+              card.days.forEach((day) => {
+                //If day from database matches day from fetched menu
+                if (moment(day.date).format('YYYY-MM-DD') == date) {
+                  day.items.forEach((item) => {
+                    //If the same item from fetch has already benn saved to database before
+                    if (mealItem.nid == item.nid) {
+                      //Give it the property checked so it will be rendered as a checked checkbox
+                      mealItem.checked = 'true';
+                    }
+                  })
+                }
+              })
+
+            })
           }
         }
-        //GET BACKGROUND IMAGE FROM S3
+
+        //Get backgroundImage form S3
         var s3 = new AWS.S3();
         var params = {
           Bucket: "school-menu-bucket",
@@ -243,125 +359,140 @@ router.get('/card/:cardId/edit',function (req, res, next) {
           else {
             //CONVERT BACKGROUND IMAGE TO BASE64
             var imageFromS3 = (new Buffer(data.Body)).toString('base64');
-  
+
             //RENDER EDIT FORM
-            res.render('editCard', { bgImage: imageFromS3, card: card, contentType: card.imageContentType, lunches: lunches });
+            res.render('editCard', { mealDates: recipes, bgImage: imageFromS3, card: card, contentType: card.imageContentType, currDate: moment(card.days[0].date).format('YYYY-MM-DD')});
           }
         });
-      })
-    } else {
-      res.render('notFound', { cardId: req.params.cardId });
-    }
+      } else {
+        res.render('notFound', { cardId: req.params.cardId });
+      }
+    });
   }).catch(error => {
     if (error) {
       console.error(error);
       res.render('error', { message: 'Error', error: error })
     }
   })
-});
+})
 
 //EDIT card
 router.post('/card/:cardId/edit', function (req, res, next) {
+  var selectedItemObject = {};
+  /* selectedItemObject organizes selectedItem checkboxes in an array by date
+    {
+      2018-05-11: ['{title: 'Milk, Nonfat Flavored 1 cup', nid: '2443', date: '2018-05-11'}', 
+                  '{title: '1 M/MA (Lunch)', nid: '16431', date: '2018-05-11'}']
+    }
+  */
   var form = new multiparty.Form();
-  //PARSE MULTIPART FORM
   form.parse(req, function (err, fields, files) {
-    Item.findAll({ where: {cardId: req.params.cardId } }).then((items) => {
-      for(var i = 0; i < (fields.selectedItem.length > items.length ? fields.selectedItem.length : items.length); i++) {
-        if ( items[i] && fields.selectedItem[i] ) {
-          Item.update({
-            data: fields.selectedItem[i],
-            cardId: req.params.cardId
-          }, { where: { id: items[i].id }})
-        } else if (fields.selectedItem[i] && !items[i]){
-          Item.create({
-            data: fields.selectedItem[i],
-            cardId: req.params.cardId
-          })
-        } else if (items[i] && !fields.selectedItem[i]) {
-          Item.destroy({where: { id: items[i].id }});
-        }
-      }
-    }).then(() => {
-      var fieldsToUpdate = {
-        title: DOMPurify.sanitize(fields.cardTitle),
-      };
-      //IF A BACKGROUND IMAGE WAS UPLOADED ADD IT TO FIELDSTOUPDATE
-      if (files.backgroundImage[0].size != 0) {
-        fieldsToUpdate.backgroundImage = DOMPurify.sanitize(files.backgroundImage[0].originalFilename);
-        fieldsToUpdate.imageContentType = DOMPurify.sanitize(files.backgroundImage[0].headers['content-type']);
-      }
-      Card.findById(req.params.cardId).then((card) => {
-        Card.update(fieldsToUpdate, { where: { id: req.params.cardId }});
-          console.log('UPDATE!!!!!!!');
-          console.log(card);
-          if (files.backgroundImage[0].size != 0) {
-            //UPLOAD NEW BACKGROUND IMAGE IF THERE IS ONE
-            var s3 = new AWS.S3();
-            var params = {
-              Bucket: 'school-menu-bucket',
-              Key: card.id.toString(),
-              Body: fs.createReadStream(files.backgroundImage[0].path)
-            }
-            s3.upload(params, function (err, data) {
-              res.redirect(`/menu/${card.menuId}`);
-            })
-          } else {
-            //REDIRECT TO MENU
-            res.redirect(`/menu/${card.menuId}`);
-          }
-        })
-      }).catch(error => {
-        if (error) {
-          console.error(error);
-          res.render('error', { message: 'Error', error: error })
+    Card.findOne({ where: {id: req.params.cardId }, include: [{
+      model: Day,
+      include:[ Item ]
+    }]}).then((card) => {
+      //Create selectedItemObject keys
+      fields.selectedItem.forEach((item) => {
+        if (!selectedItemObject[new Date(moment(JSON.parse(item).date).add(1 ,'d').format('YYYY-MM-DD'))]) {
+          selectedItemObject[new Date(moment(JSON.parse(item).date).add(1 ,'d').format('YYYY-MM-DD'))] = [];
         }
       })
+      return card;
+    }).then((card) => {
+      //Put each selected item in array by date for corresponding key in selectedItemObject
+      fields.selectedItem.forEach((item) => {
+        for(var date in selectedItemObject) {
+          if (new Date(moment(JSON.parse(item).date).add(1 ,'d').format('YYYY-MM-DD')) == date) {
+            selectedItemObject[new Date(moment(JSON.parse(item).date).add(1 ,'d').format('YYYY-MM-DD'))].push(JSON.parse(item));
+          }
+        }
+      })
+      return card;
+    }).then((card) => {
+      Object.keys(selectedItemObject).forEach((date) => {
+        //Select day that matches date from selectedItemObject
+        Day.findOne({ where: { cardId: card.id, date: date }, include: [Item] }).then((day) => {
+          //If day is not in database
+          if(!day) {
+            Day.create({
+              date: new Date(moment(date).add(1 ,'d').format('YYYY-MM-DD')),
+              cardId: card.id
+            }).then((newDay) => {
+              selectedItemObject[date].forEach((item) => {
+                Item.create({
+                  title: item.title,
+                  nid: item.nid,
+                  dayId: newDay.id //Foreign key that links items to days
+                })
+              })
+            })
+          } else {
+            //If day is in database
+            //Loop through items for that day in selectedItemObject and day in database
+            for(var i = 0; i < (selectedItemObject[date].length > day.items.length ? selectedItemObject[date].length : day.items.length); i++) {
+              //if the there is an item selected and there is an item in database, update it
+              if (selectedItemObject[date][i] && day.items[i]) {
+                Item.update({
+                  title: selectedItemObject[date][i].title,
+                  nid: selectedItemObject[date][i].nid,
+                  dayId: day.id
+                }, { where: { id: day.items[i].id }})
+              //If there is a selected item that is not in the database, create it
+              } else if (selectedItemObject[date][i] && !day.items[i]){
+                Item.create({
+                  title: selectedItemObject[date][i].title,
+                  nid: selectedItemObject[date][i].nid,
+                  dayId: day.id
+                })
+              //If there is a item in the database that was not selected, delete it
+              } else if (day.items[i] && !selectedItemObject[date][i]) {
+                Item.destroy({where: { id: day.items[i].id}});
+              }
+            }
+          }
+        })
+      });
+      return card;
+    }).then((card) => { 
+      //If day.date is not in selectedItemObject, delete that day from database
+      Day.findAll({ where: { cardId: card.id, date: { $notIn: Object.keys(selectedItemObject) } } }).then((day) => {
+        day.forEach((day) => {
+          Day.destroy({where: {id: day.id}});
+        })
+      }).then(() => {
+        var fieldsToUpdate = {
+          title: DOMPurify.sanitize(fields.cardTitle),
+          customText: DOMPurify.sanitize(fields.customText),
+        };
+        //If a backgroundImage was uploaded, add it to fieldsToUpdate
+        if (files.backgroundImage[0].size != 0) {
+          fieldsToUpdate.backgroundImage = DOMPurify.sanitize(files.backgroundImage[0].originalFilename);
+          fieldsToUpdate.imageContentType = DOMPurify.sanitize(files.backgroundImage[0].headers['content-type']);
+        }
+  
+        Card.update(fieldsToUpdate, { where: { id: card.id }});
+        //Upload backgroundImage to S3
+        if (files.backgroundImage[0].size != 0) {
+          var s3 = new AWS.S3();
+          var params = {
+            Bucket: 'school-menu-bucket',
+            Key: card.id.toString(),
+            Body: fs.createReadStream(files.backgroundImage[0].path)
+          }
+          s3.upload(params, function (err, data) {
+            res.redirect(`/menu/${card.menuId}`);
+          })
+        } else {
+          //REDIRECT TO MENU
+          res.redirect(`/menu/${card.menuId}`);
+        }
+      })
+    }).catch(error => {
+      if (error) {
+        console.error(error);
+        res.render('error', { message: 'Error', error: error })
+      }
     })
-});
-
-
-
-
-
-
-
-//CREATE SAMPLE LUNCHES
-router.post('/create-sample-lunch', function (req, res, next) {
-  SampleLunch.create({
-    title: req.body.title,
-    image: req.body.image,
-    description: req.body.description,
-    allergens: [req.body.allergens],
-    attributes: [req.body.attributes],
-    servingSize: req.body.servingSize,
-    servingSizeMeasurement: req.body.servingSizeMeasurement,
-    ingredientInfo: req.body.ingredientInfo,
-    nutrients: {
-      calories: req.body.calories,
-      fat_total: req.body.fat_total,
-      saturated_fat: req.body.saturated_fat,
-      trans_fat: req.body.trans_fat,
-      cholesterol: req.body.cholesterol,
-      sodium: req.body.sodium,
-      carbohydrates: req.body.carbohydrates,
-      fiber: req.body.fiber,
-      sugar: req.body.sugar,
-      protein: req.body.protein,
-      iron: req.body.iron,
-      calcium: req.body.calcium,
-      vitamin_a_iu: req.body.vitamin_a_iu,
-      vitamin_c: req.body.vitamin_c,
-      ash: req.body.ash,
-      serving_weight: req.body.serving_weight,
-      ash_data_missing: req.body.ash_data_missing,
-      calcium_measurement: req.body.calcium_measurement,
-      iron_measurement: req.body.iron_measurement,
-      vitamin_a_iu_measurement: req.body.vitamin_a_iu_measurement,
-      vitamin_c_measurement: req.body.vitamin_c_measurement
-    }
-  }, function (err, sampleLunch) {
-    if (err) throw err;
-    res.send('hey');
   })
 });
 

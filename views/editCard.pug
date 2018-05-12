@@ -10,16 +10,32 @@ block content
       div(class="row")
         div(class="col")
           h4(class="mt-4 mb-3 d-block") Items 
-      div(class="row") 
-        each lunch in lunches
-          if lunch.checked == 'true'
-            div(class="form-check col-sm-12 col-md-6 col-lg-4 align-items-center d-flex")
-              input(type="checkbox", class="form-contorl", id= lunch._id, name="selectedItem", value=lunch, checked)
-              label(for=lunch._id, class="col-form-label ml-2") #{lunch.title}
-          else
-            div(class="form-check col-sm-12 col-md-6 col-lg-4 align-items-center d-flex")
-              input(type="checkbox", class="form-contorl", id= lunch._id, name="selectedItem", value=lunch)
-              label(for=lunch._id, class="col-form-label ml-2") #{lunch.title}
+      div(id="editCardCarousel" class="carousel slide w-75 m-auto" data-ride="carousel" data-interval="false")
+        div(class="carousel-inner d-flex align-items-center" role="listbox")
+          each date, dateIndex in mealDates
+            div(class=`day carousel-item ${dateIndex === currDate ? "active" : ""}`)
+              h1(class="text-center")= dateIndex
+              div(class="d-flex justify-content-center flex-wrap mealContainer")
+                each meal, mealIndex in date
+                  if meal.length !== 0
+                    div(class="meal card m-2")
+                      div(class="card-body")
+                        h4(class="text-center")=mealIndex
+                        each item in meal
+                          if item.checked == 'true'
+                            div(class="form-check p-0")
+                              input(type="checkbox", class="form-contorl", id= item.nid, name="selectedItem", value=`{"title":"${item.title}", "date":"${dateIndex}", "nid":"${item.nid}"}`, checked)
+                              label(for=item.nid, class="col-form-label ml-2") #{item.title}
+                          else
+                            div(class="form-check p-0")
+                              input(type="checkbox", class="form-contorl", id= item.nid, name="selectedItem", value=`{"title":"${item.title}", "date":"${dateIndex}", "nid":"${item.nid}"}`)
+                              label(for=item.nid, class="col-form-label ml-2") #{item.title}
+        a(class="carousel-control-prev" href="#editCardCarousel" role="button" data-slide="prev")
+          span(class="carousel-control-prev-icon" aria-hidden="true")
+          span(class="sr-only") Previous
+        a(class="carousel-control-next" href="#editCardCarousel" role="button" data-slide="next")
+          span(class="carousel-control-next-icon" aria-hidden="true")
+          span(class="sr-only") Next                          
       div(class="row mt-4 flex-column")
         div(class="col-12")
           h4(class="mb-3") Background Image
@@ -32,6 +48,28 @@ block content
         div(class="col")
           h4(class="mt-4 mb-3") Title
           input(type="text", id="title", name="cardTitle", value=card.title)
+      div(class="row")
+        div(class="col-12")
+          h4(class="mt-4 mb-3") Custom Text
+          textarea(name="customText", class="w-100 p-2", rows="10")= card.customText
       div(class="row mt-4")
         div(class="col text-center")
           input(type="submit", class="btn btn-primary mb-5", value="Save")
+
+
+      //- div(id="createCardCarousel" class="carousel slide w-75 m-auto" data-ride="carousel" data-interval="false")
+      //-   div(class="carousel-inner d-flex align-items-center" role="listbox")
+      //-     each date, dateIndex in mealDates
+      //-       div(class=`day carousel-item ${dateIndex === currDate ? "active" : ""}`)
+      //-         h1(class="text-center")= dateIndex
+      //-         div(class="d-flex justify-content-center flex-wrap mealContainer")
+      //-           each meal, mealIndex in date
+      //-             if meal.length !== 0
+      //-               div(class="meal card m-2")
+      //-                 div(class="card-body")
+      //-                   h4(class="text-center")=mealIndex
+      //-                   each item in meal
+      //-                       div(class="form-check p-0")
+      //-                         input(type="checkbox", class="form-contorl", id=item.nid, name="selectedItem", value=`{"title":"${item.title}", "date":"${dateIndex}"}`)
+      //-                         label(for=item.nid, class="col-form-label ml-2") #{item.title}
+        
