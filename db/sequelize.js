@@ -9,11 +9,13 @@ var connection = new Sequelize(process.env.DB_DATABASE, process.env.DB_USERNAME,
 
 connection.sync();
 
+//MODELS
 var Dashboard = connection.define('dashboards', {
   guid: {
       type: Sequelize.STRING
   }
 });
+
 var Menu = connection.define('menus', {
   title: {
       type: Sequelize.STRING
@@ -25,6 +27,7 @@ var Menu = connection.define('menus', {
     type: Sequelize.STRING
   }
 });
+
 var Card = connection.define('cards', {
   title: {
       type: Sequelize.STRING
@@ -39,24 +42,35 @@ var Card = connection.define('cards', {
       type: Sequelize.STRING
   }
 });
+
 var Day = connection.define('days', {
   date: {
     type: Sequelize.DATE
+  },
+  displayDate: {
+    type: Sequelize.STRING
   }
 });
+
 var Item = connection.define('items', {
   title: {
       type: Sequelize.STRING
+  },
+  date: {
+    type: Sequelize.STRING
   },
   nid: {
     type: Sequelize.STRING
   }
 });
 
+
+//ASSOCIATIONS
 Dashboard.hasMany(Menu, {
   onDelete: 'CASCADE',
   onUpdate: 'CASCADE',
 });
+
 Menu.belongsTo(Dashboard, {
   onDelete: 'CASCADE',
   onUpdate: 'CASCADE',
@@ -65,6 +79,7 @@ Menu.hasMany(Card, {
   onDelete: 'CASCADE',
   onUpdate: 'CASCADE',
 });
+
 Card.belongsTo(Menu, {
   onDelete: 'CASCADE',
   onUpdate: 'CASCADE',
@@ -73,6 +88,7 @@ Card.hasMany(Day, {
   onDelete: 'CASCADE',
   onUpdate: 'CASCADE',
 });
+
 Day.belongsTo(Card, {
   onDelete: 'CASCADE',
   onUpdate: 'CASCADE',
@@ -81,6 +97,7 @@ Day.hasMany(Item, {
   onDelete: 'CASCADE',
   onUpdate: 'CASCADE',
 });
+
 Item.belongsTo(Day, {
   onDelete: 'CASCADE',
   onUpdate: 'CASCADE',

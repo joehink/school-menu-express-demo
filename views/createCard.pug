@@ -12,8 +12,9 @@ block content
           h4(class="mt-4 mb-3 d-block") Items 
       div(id="createCardCarousel" class="carousel slide w-75 m-auto" data-ride="carousel" data-interval="false")
         div(class="carousel-inner d-flex align-items-center" role="listbox")
+          -var count =0
           each date, dateIndex in mealDates
-            div(class=`day carousel-item ${dateIndex === currDate ? "active" : ""}`)
+            div(class=`day carousel-item ${count=== 0 ? "active" : ""}`)
               h1(class="text-center")= dateIndex
               div(class="d-flex justify-content-center flex-wrap mealContainer")
                 each meal, mealIndex in date
@@ -25,6 +26,7 @@ block content
                           div(class="form-check p-0")
                             input(type="checkbox", class="form-contorl", id=item.nid, name="selectedItem", value=`{"title":"${item.title}", "date":"${dateIndex}", "nid":"${item.nid}"}`)
                             label(for=item.nid, class="col-form-label ml-2") #{item.title}
+                            -count++
         a(class="carousel-control-prev" href="#createCardCarousel" role="button" data-slide="prev")
           span(class="carousel-control-prev-icon" aria-hidden="true")
           span(class="sr-only") Previous

@@ -12,6 +12,7 @@ var fetch = require('node-fetch');
 var moment = require('moment');
 
 //"Sequelize" models for each table in database
+//sequelize.js contains all models, table schemas, and associations for the database
 var {Dashboard, Menu, Card, Day, Item} = require('../db/sequelize.js');
 
 //GET -- ROOT OF WEBSITE
@@ -68,7 +69,7 @@ router.get('/menu/:menuId', function(req, res, next) {
         model: Day,
         where: {
           date: {
-            $gte: new Date(moment().add(1, 'd').format('YYYY-MM-DD'))
+            $gte: moment().format('YYYY-MM-DD')
             //Where day.date is greater than or equal to ($gte) today's date
             //new Date() subtracts a day, so added one in with moment
           }
@@ -146,11 +147,11 @@ router.get('/menu/:menuId/instance/:instanceId/district/:districtFile', function
     return response.json();
   })
   .then(function(fetchedMenu) {
-    res.render('createCard', { mealDates: JSON.parse(fetchedMenu.recipes), menuId: req.params.menuId, currDate: moment().format('YYYY-MM-DD') });
+    res.render('createCard', { mealDates: JSON.parse(fetchedMenu.recipes), menuId: req.params.menuId });
   });
 })
 
-//POST new card
+//POST -- CREATE NEW CARD
 router.post('/menu/:menuId/card/create', function (req, res, next) {
   var selectedItemObject = {};
   /* selectedItemObject will organize selectedItem checkboxes by date
@@ -175,48 +176,48 @@ router.post('/menu/:menuId/card/create', function (req, res, next) {
           selectedItemObject[JSON.parse(item).date] = [];
         }
       })
-      return card;
-    }).then((card) => {
-      //Loop through selectedItemObject keys which are strings of dates. Ex. '2018-05-12'
-      Object.keys(selectedItemObject).forEach((day) => {
-        //Create new day for each day in selectedItemObject
-        Day.create({
-          date: new Date(moment(day).add(1, 'd').format('YYYY-MM-DD')),
-          cardId: card.id //Foreign key that links days to card
-        }).then((newDay) => {
-          fields.selectedItem.forEach((item) => {
-            //Loop through every selectedItem checkbox
-            //if it has the same date as newDay create item and link it to newDay
-            if(JSON.parse(item).date == moment(newDay.date).format('YYYY-MM-DD')) {
-              Item.create({
-                title: JSON.parse(item).title,
-                nid: JSON.parse(item).nid,
-                dayId: newDay.id
-              })
-            }
-          })
-        })
+
+      //Put each selected item in array by date for corresponding key in selectedItemObject
+      fields.selectedItem.forEach((item) => {
+        for(var date in selectedItemObject) {
+          if (JSON.parse(item).date == date) {
+            selectedItemObject[JSON.parse(item).date].push(JSON.parse(item));
+          }
+        }
       })
-      return card;
-    }).then((card) => {
-      //Upload backgroundImage to S3
-      var s3 = new AWS.S3();
-      var params = {
-        Bucket: 'school-menu-bucket',
-        Key: card.id.toString(),
-        Body: fs.createReadStream(files.backgroundImage[0].path)
-      };
-      s3.upload(params, function (err, data) {
-        fs.unlink(files.backgroundImage[0].path);
-        res.redirect(`/menu/${req.params.menuId}`);
-      });
-    }).catch(error => {
-      if (error) {
-        console.error(error);
-        res.render('error', { message: 'Error', error: error })
-      }
+
+      //Loop through selectedItemObject keys which are strings of dates. Ex. '2018-05-12'
+      var promises = Object.keys(selectedItemObject).map((date) => {
+        //Create new day for each day in selectedItemObject
+        return Day.create({
+          date: new Date(moment(date).add(1, 'd').format('YYYY-MM-DD')),
+          displayDate: moment(date).format('YYYY-MM-DD'),
+          cardId: card.id,
+          items: selectedItemObject[date]
+        }, {
+          include: [ Item ]
+        })
+      }); 
+      Promise.all(promises).then(() => {
+        //Upload backgroundImage to S3
+        var s3 = new AWS.S3();
+        var params = {
+          Bucket: 'school-menu-bucket',
+          Key: card.id.toString(),
+          Body: fs.createReadStream(files.backgroundImage[0].path)
+        };
+        s3.upload(params, function (err, data) {
+          fs.unlink(files.backgroundImage[0].path);
+          res.redirect(`/menu/${req.params.menuId}`);
+        });
+      }).catch(error => {
+        if (error) {
+          console.error(error);
+          res.render('error', { message: 'Error', error: error })
+        }
+      })
     })
-  });
+  })
 });
 
 
@@ -304,9 +305,8 @@ router.get('/menu/:menuId/card/:cardId/instance/:instanceId/district/:districtFi
     model: Day, 
     where: {
       date: {
-        $gte: new Date(moment().add(1, 'd').format('YYYY-MM-DD'))
+        $gte: moment().format('YYYY-MM-DD')
         //Where day.date is greater than or equal to ($gte) today's date
-        //new Date() subtracts a day, so added one in with moment
       },
     }, 
     include: [ Item ]
@@ -328,12 +328,11 @@ router.get('/menu/:menuId/card/:cardId/instance/:instanceId/district/:districtFi
       if(card) {
         //Loop through each day, meal, and item to find which items have already been selected for each day
         for(var date in recipes) {
-          for(var meal in recipes[date]) {
-            recipes[date][meal].forEach((mealItem) => {
-
-              card.days.forEach((day) => {
-                //If day from database matches day from fetched menu
-                if (moment(day.date).format('YYYY-MM-DD') == date) {
+          card.days.forEach((day) => {
+            if (moment(day.date).format('YYYY-MM-DD') == date) {
+              //If day from database matches day from fetched menu
+              for(var meal in recipes[date]) {
+                recipes[date][meal].forEach((mealItem) => {
                   day.items.forEach((item) => {
                     //If the same item from fetch has already benn saved to database before
                     if (mealItem.nid == item.nid) {
@@ -341,11 +340,10 @@ router.get('/menu/:menuId/card/:cardId/instance/:instanceId/district/:districtFi
                       mealItem.checked = 'true';
                     }
                   })
-                }
-              })
-
-            })
-          }
+                })
+              }
+            }
+          })
         }
 
         //Get backgroundImage form S3
@@ -376,7 +374,7 @@ router.get('/menu/:menuId/card/:cardId/instance/:instanceId/district/:districtFi
   })
 })
 
-//EDIT card
+//POST -- EDIT CARD
 router.post('/card/:cardId/edit', function (req, res, next) {
   var selectedItemObject = {};
   /* selectedItemObject organizes selectedItem checkboxes in an array by date
@@ -397,8 +395,7 @@ router.post('/card/:cardId/edit', function (req, res, next) {
           selectedItemObject[new Date(moment(JSON.parse(item).date).add(1 ,'d').format('YYYY-MM-DD'))] = [];
         }
       })
-      return card;
-    }).then((card) => {
+
       //Put each selected item in array by date for corresponding key in selectedItemObject
       fields.selectedItem.forEach((item) => {
         for(var date in selectedItemObject) {
@@ -407,91 +404,53 @@ router.post('/card/:cardId/edit', function (req, res, next) {
           }
         }
       })
-      return card;
-    }).then((card) => {
-      Object.keys(selectedItemObject).forEach((date) => {
-        //Select day that matches date from selectedItemObject
-        Day.findOne({ where: { cardId: card.id, date: date }, include: [Item] }).then((day) => {
-          //If day is not in database
-          if(!day) {
-            Day.create({
-              date: new Date(moment(date).add(1 ,'d').format('YYYY-MM-DD')),
-              cardId: card.id
-            }).then((newDay) => {
-              selectedItemObject[date].forEach((item) => {
-                Item.create({
-                  title: item.title,
-                  nid: item.nid,
-                  dayId: newDay.id //Foreign key that links items to days
-                })
-              })
+      //Delete all days and items associated with card
+      Day.destroy({where:{cardId: card.id}}).then(() => {
+        //Cretae all new days and items based off of selectedItemObject
+        var promises = Object.keys(selectedItemObject).map((date) => {
+          return Day.create({
+            date: date,
+            displayDate: moment(date).format('YYYY-MM-DD'),
+            cardId: card.id,
+            items: selectedItemObject[date]
+          }, {
+            include: [ Item ]
+          })
+        }); 
+        Promise.all(promises).then(() => {
+          var fieldsToUpdate = {
+            title: DOMPurify.sanitize(fields.cardTitle),
+            customText: DOMPurify.sanitize(fields.customText),
+          };
+          //If a backgroundImage was uploaded, add it to fieldsToUpdate
+          if (files.backgroundImage[0].size != 0) {
+            fieldsToUpdate.backgroundImage = DOMPurify.sanitize(files.backgroundImage[0].originalFilename);
+            fieldsToUpdate.imageContentType = DOMPurify.sanitize(files.backgroundImage[0].headers['content-type']);
+          }
+    
+          Card.update(fieldsToUpdate, { where: { id: card.id }});
+          //Upload backgroundImage to S3
+          if (files.backgroundImage[0].size != 0) {
+            var s3 = new AWS.S3();
+            var params = {
+              Bucket: 'school-menu-bucket',
+              Key: card.id.toString(),
+              Body: fs.createReadStream(files.backgroundImage[0].path)
+            }
+            s3.upload(params, function (err, data) {
+              res.redirect(`/menu/${card.menuId}`);
             })
           } else {
-            //If day is in database
-            //Loop through items for that day in selectedItemObject and day in database
-            for(var i = 0; i < (selectedItemObject[date].length > day.items.length ? selectedItemObject[date].length : day.items.length); i++) {
-              //if the there is an item selected and there is an item in database, update it
-              if (selectedItemObject[date][i] && day.items[i]) {
-                Item.update({
-                  title: selectedItemObject[date][i].title,
-                  nid: selectedItemObject[date][i].nid,
-                  dayId: day.id
-                }, { where: { id: day.items[i].id }})
-              //If there is a selected item that is not in the database, create it
-              } else if (selectedItemObject[date][i] && !day.items[i]){
-                Item.create({
-                  title: selectedItemObject[date][i].title,
-                  nid: selectedItemObject[date][i].nid,
-                  dayId: day.id
-                })
-              //If there is a item in the database that was not selected, delete it
-              } else if (day.items[i] && !selectedItemObject[date][i]) {
-                Item.destroy({where: { id: day.items[i].id}});
-              }
-            }
-          }
-        })
-      });
-      return card;
-    }).then((card) => { 
-      //If day.date is not in selectedItemObject, delete that day from database
-      Day.findAll({ where: { cardId: card.id, date: { $notIn: Object.keys(selectedItemObject) } } }).then((day) => {
-        day.forEach((day) => {
-          Day.destroy({where: {id: day.id}});
-        })
-      }).then(() => {
-        var fieldsToUpdate = {
-          title: DOMPurify.sanitize(fields.cardTitle),
-          customText: DOMPurify.sanitize(fields.customText),
-        };
-        //If a backgroundImage was uploaded, add it to fieldsToUpdate
-        if (files.backgroundImage[0].size != 0) {
-          fieldsToUpdate.backgroundImage = DOMPurify.sanitize(files.backgroundImage[0].originalFilename);
-          fieldsToUpdate.imageContentType = DOMPurify.sanitize(files.backgroundImage[0].headers['content-type']);
-        }
-  
-        Card.update(fieldsToUpdate, { where: { id: card.id }});
-        //Upload backgroundImage to S3
-        if (files.backgroundImage[0].size != 0) {
-          var s3 = new AWS.S3();
-          var params = {
-            Bucket: 'school-menu-bucket',
-            Key: card.id.toString(),
-            Body: fs.createReadStream(files.backgroundImage[0].path)
-          }
-          s3.upload(params, function (err, data) {
+            //REDIRECT TO MENU
             res.redirect(`/menu/${card.menuId}`);
-          })
-        } else {
-          //REDIRECT TO MENU
-          res.redirect(`/menu/${card.menuId}`);
-        }
+          }
       })
     }).catch(error => {
-      if (error) {
-        console.error(error);
-        res.render('error', { message: 'Error', error: error })
-      }
+        if (error) {
+          console.error(error);
+          res.render('error', { message: 'Error', error: error })
+        }
+      })
     })
   })
 });

@@ -30,7 +30,7 @@ block content
                  -var count = 0
                   each day in card.days
                     div(class=`text-center day carousel-item ${count == 0 ? "active" : ""}`)
-                      h6(class="pb-1 mb-3 border-bottom") #{day.date}
+                      h6(class="pb-1 mb-3 border-bottom") #{day.displayDate}
                       div
                         each item in day.items
                           p(class="text-left")= item.title
